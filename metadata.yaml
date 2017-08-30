@@ -1,12 +1,14 @@
-name: snappy-kpi-scripts
-summary: Scripts to gather snappy KPIs from external sources
+name: conjure-up-kpi
+summary: Scripts to gather conjure-up KPIs from external sources
 maintainers:
- - Canonical IS <root@admin.canonical.com>
+ - Adam Stokes <adam.stokes@ubuntu.com>
 description: |
-    Scripts to gather snappy KPIs from external sources.
+    Scripts to gather conjure-up KPIs from external sources.
 tags:
   - layer
 subordinate: true
+series:
+  - xenial
 requires:
     juju-info:
         scope: container

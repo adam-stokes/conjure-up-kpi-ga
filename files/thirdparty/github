@@ -23,7 +23,7 @@ def get_github_orgs(config):
     from github import Github
 
     g = Github(config['github-username'], config['github-password'])
-    ubuntu = g.get_organization('snapcore')
+    ubuntu = g.get_organization('conjure-up')
     return ubuntu
 
 
@@ -54,7 +54,7 @@ if __name__ == '__main__':
     import os
     import sys
 
-    pkg = 'snappy-kpi-scripts'
+    pkg = 'kpi'
     name = os.path.basename(sys.argv[0])
     config = get_config(pkg, name)
 

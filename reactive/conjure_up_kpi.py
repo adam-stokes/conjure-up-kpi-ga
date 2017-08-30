@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 
 """
-Copyright (c) 2016 Canonical, Ltd.
-Authors: Paul Gear
+Copyright (c) 2016, 2017 Canonical, Ltd.
+Authors: Paul Gear, Adam Stokes
 
-Hooks for snappy-kpi-scripts charm.
-
-FIXME:
-- "snappy-kpi-scripts" hard-coded in too many places.
-- I'm not convinced we need unitdata.kv() for config settings;
-  hookenv.config() might be enough once we've validated it in
-  config.changed.
+Hooks for conjure-up-kpi charm.
 """
 
 import base64
@@ -37,8 +31,6 @@ from charms.reactive.decorators import (
     when_not,
 )
 
-from charmhelpers.fetch import apt_install
-
 from charmhelpers.core.templating import render
 
 
@@ -61,13 +53,13 @@ def maint(msg):
 
 def write_config_file():
     """
-    Create /etc/snappy-kpi-scripts.ini.
+    Create /etc/kpi.ini.
     """
-    cfg_file = 'snappy-kpi-scripts.ini'
+    cfg_file = 'kpi.ini'
     kv = unitdata.kv()
     push_gateway = kv.get('push_gateway')
     maint('rendering config %s' % (cfg_file,))
-    script_dir = '/srv/snappy-kpi-scripts/parts'
+    script_dir = '/srv/kpi/parts'
     scripts = [x for x in os.listdir(
         script_dir) if re.match(r'^[-_A-Za-z]+$', x)]
     render(
@@ -87,7 +79,7 @@ def write_cron_job():
     """
     Create cron job
     """
-    dst = '/etc/cron.d/snappy-kpi-scripts'
+    dst = '/etc/cron.d/kpi'
     cron_job = 'cron-job'
     maint('installing %s to %s' % (cron_job, dst))
     kv = unitdata.kv()
@@ -96,53 +88,36 @@ def write_cron_job():
         target=dst,
         perms=0o755,
         context={
-            'script_dir': '/srv/snappy-kpi-scripts/parts',
-            'script_name': 'snappy-kpi-scripts',
+            'script_dir': '/srv/kpi/parts',
+            'script_name': 'kpi',
             'user': kv.get('run-as'),
         },
     )
 
 
-def write_launchpad_credentials():
-    """
-    Save launchpad credentials in the configured file.
-    Data comes in as base64 string, so we must convert to bytes,
-    decode, then convert back to string before writing to the file.
-    """
-    kv = unitdata.kv()
-    creds_file = kv.get('launchpad-credentials-file')
-    maint('saving Launchpad credentials to %s' % (creds_file,))
-    dst_dir = os.path.dirname(creds_file)
-    user = kv.get('run-as')
-    host.mkdir(dst_dir, owner=user, perms=0o700)
-    creds_blob = kv.get('launchpad-credentials')
-    creds_data = base64.b64decode(creds_blob.encode())
-    host.write_file(creds_file, creds_data, owner=user)
-
-
-def write_ga_dashboard_snapcraft_io_credentials():
+def write_ga_dashboard_credentials():
     """
     Save GA credentials in the configured file.
     """
     kv = unitdata.kv()
-    creds_file = kv.get('ga-dashboard-snapcraft-io-credentials-file')
+    creds_file = kv.get('ga-dashboard-credentials-file')
     maint('saving GA credentials to %s' % (creds_file,))
     dst_dir = os.path.dirname(creds_file)
     user = kv.get('run-as')
     host.mkdir(dst_dir, owner=user, perms=0o700)
-    creds_blob = kv.get('ga-dashboard-snapcraft-io-credentials')
+    creds_blob = kv.get('ga-dashboard-credentials')
     creds_data = base64.b64decode(creds_blob.encode())
     host.write_file(creds_file, creds_data, owner=user)
 
 
 @when_all(
-    'snappy-kpi-scripts.configured',
+    'kpi.configured',
     'push_gateway.configured',
 )
 def write_config():
     blocked('Unable to configure charm - please see log')
     write_launchpad_credentials()
-    write_ga_dashboard_snapcraft_io_credentials()
+    write_ga_dashboard_credentials()
     push_gateway = write_config_file()
     write_cron_job()
     active('Configured push gateway %s' % (push_gateway,))
@@ -169,26 +144,24 @@ def not_configured():
 
 @hook('config-changed')
 def config_changed():
-    remove_state('snappy-kpi-scripts.configured')
+    remove_state('kpi.configured')
     maint('checking configuration')
 
     kv = unitdata.kv()
     config_items = (
-        'launchpad-credentials',
-        'launchpad-credentials-file',
-        'ga-dashboard-snapcraft-io-credentials',
-        'ga-dashboard-snapcraft-io-credentials-file',
+        'ga-dashboard-credentials',
+        'ga-dashboard-credentials-file',
         'run-as',
     )
     for c in config_items:
         item = hookenv.config(c)
         if len(item) <= 0:
             blocked('%s must be set' % (c,))
-            remove_state('snappy-kpi-scripts.configured')
+            remove_state('kpi.configured')
             return
         else:
             kv.set(c, item)
-    set_state('snappy-kpi-scripts.configured')
+    set_state('kpi.configured')
 
 
 @hook(
@@ -198,7 +171,7 @@ def config_changed():
 def install_files():
     # this part lifted from haproxy charm hooks.py
     src = os.path.join(os.environ["CHARM_DIR"], "files/thirdparty/")
-    dst = '/srv/snappy-kpi-scripts/parts/'
+    dst = '/srv/kpi/parts/'
     maint('Copying scripts from %s to %s' % (src, dst))
     host.mkdir(dst, perms=0o755)
     for fname in glob.glob(os.path.join(src, "*")):
@@ -207,18 +180,6 @@ def install_files():
     # Template files may have changed in an upgrade, so we need to rewrite
     # them
     config_changed()
-
-    # Package prerequisites for snappy-kpi-scripts/thirdparty/*
-    apt_install([
-        'python-configparser',
-        'python-prometheus-client',
-        'python-github',
-        'python-cssselect',
-        'python3-prometheus-client',
-        'python3-trello',
-        'python-googleapi',
-        'python3-googleapi',
-        ])
 
 
 if __name__ == '__main__':

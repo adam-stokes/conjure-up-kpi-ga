@@ -64,25 +64,29 @@ def initialize_analyticsreporting(creds_path, scopes):
 
 def get_report(analytics, view_id):
     # Use the Analytics Service Object to query the Analytics Reporting API V4.
-    return analytics.reports().batchGet(
-        body={
-            'reportRequests': [{
-                'viewId': view_id,
-                'dateRanges': [{
-                    'startDate': '2010-01-01',
-                    'endDate': 'today',
-                }],
-                'metrics': [
-                    {'expression': 'ga:pageviews'},
-                    # {'expression': 'ga:sessions'},
-                    # {'expression': 'ga:users'},
-                ],
-                'dimensions': [
-                    {'name': 'ga:country'},
-                    # {'name': 'ga:browser'},
-                ],
-            }]
-        }).execute()
+        return analytics.reports().batchGet(
+            body={
+                'reportRequests': [
+                    {
+                        'viewId': view_id,
+                        'dateRanges': [{'startDate': '2015-01-01',
+                                        'endDate': 'today'}],
+                        'metrics': [
+                            {'expression': 'ga:totalEvents'}
+                        ],
+                        'dimensionFilterClauses': [{
+                            "filters": [{
+                                'dimensionName': 'ga:eventCategory',
+                                "expressions": ["Spell\sChoice"]
+                            }]
+                        }],
+                        'dimensions': [
+                            {'name': 'ga:eventCategory'},
+                            {'name': 'ga:eventAction'}
+                        ]
+                    }]
+            }
+        ).execute()
 
 
 def set_gauges(registry, response):
@@ -100,8 +104,8 @@ def set_gauges(registry, response):
         for metric in metricHeaders:
             metric_name = metric['name'].replace('ga:', '')
             gauge = Gauge(
-                name='ga_dashboard_snapcraft_io_{}'.format(metric_name),
-                documentation='GA metric for dashboard.snapcraft.io {}'.format(
+                name='ga_dashboard_{}'.format(metric_name),
+                documentation='GA metric for conjure-up {}'.format(
                     metric_name),
                 labelnames=[d.replace('ga:', '') for d in dimensionHeaders],
                 registry=registry)
@@ -122,14 +126,14 @@ def set_gauges(registry, response):
 
 
 def main():
-    pkg = 'snappy-kpi-scripts'
+    pkg = 'kpi'
     name = os.path.basename(sys.argv[0])
     config = get_config(pkg, name)
 
     registry = CollectorRegistry()
     try:
-        view_id = config['ga-dashboard-snapcraft-io-view-id']
-        creds_path = config['ga-dashboard-snapcraft-io-credentials-file']
+        view_id = config['ga-dashboard-view-id']
+        creds_path = config['ga-dashboard-credentials-file']
         scopes = ['https://www.googleapis.com/auth/analytics.readonly']
 
         analytics = initialize_analyticsreporting(creds_path, scopes)
@@ -146,7 +150,6 @@ def main():
         else:  # Debugging enabled.
             import pprint
             pprint.pprint([(x.name, x.samples) for x in registry.collect()])
-
 
 
 if __name__ == '__main__':

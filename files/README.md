@@ -1,12 +1,3 @@
-This is a set of scripts used to push data for the snappy KPI dashboard at
-<https://snappy.kpi.canonical.com/dashboard/db/kpis>
-
-## `internal`
-
-This directory contains scripts that are wired into our own internal systems,
-such as our GNU Mailman server at lists.ubuntu.com.  It is not meant to be run
-arbitrarily.
-
 ## `thirdparty`
 
 This directory contains scripts that should (in the presence of appropriate
