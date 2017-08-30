@@ -1,0 +1,182 @@
+#!/usr/bin/env python3
+
+# Trello can be a bit slow to respond at times.
+import socket
+socket.setdefaulttimeout(30)
+
+import sys
+import os
+from trello import TrelloClient
+from collections import defaultdict, OrderedDict
+from prometheus_client import CollectorRegistry, Gauge, push_to_gateway
+import datetime
+
+
+# We use lane IDs rather than names because we occasionally change the lane
+# names but never the meaning.
+call_scheduled = ('5805d3e4494636452104f883', 'called')
+showed_interest = '5805d3c2ac188d5b33de46c9'
+contacted = '57dbf4db54142347840e58fa'
+
+lanes = OrderedDict([
+    ('57dbf4db54142347840e58fa', 'contacted'),
+    ('5805d3d6ebd842256a4e317f', 'working on their snap'),
+    ('57dbf512d7e088ef9306d823', 'landed the snap in their code'),
+    ('57ff9c19e00cb6479a89ba09', 'published the snap to the store'),
+    ('5805d49ee73a39782377ec97', 'publishing the snap from CI'),
+    ('5805d6099de5557233b4ea1f', 'publishing the snap in their release'),
+    ('5849b5bf2fdc39c5bccf661e', 'provide their own instructions for edge'),
+    ('5849b529ea98ed20359215a9', 'provide their own instructions for stable'),
+    ('57dc4b3147673268911f59ab', 'blogged and promoted'),
+])
+# This may seem crazy, and it is, but it makes staying in sync with the other
+# advocacy scripts less of a pain.
+lanes = OrderedDict([(k, v.lower().replace(' ', '_'))
+                    for k, v in lanes.items()])
+
+
+red_lanes = [
+    '5810aa57f88004f68b18c5d8', # Patches welcome
+    '583f523f53b9119ce1be2ae7', # Time constraint
+    '583f525be18ecb53e478bf99', # Blocked by a bug
+    '57dbf521801cba988f935041', # No thanks
+    '5829c0fc593f02349ed6620c', # We rejected
+    '583f56a93dd4f6a947700215', # No initial response
+    '57f706ceedb9f28fcf6eac20', # Conversation died out
+]
+
+
+def get_config(pkg, name):
+    """
+    Get configuration options for this script
+    """
+    import configparser
+
+    config = configparser.SafeConfigParser()
+    conffiles = [
+        '/etc/{}.ini'.format(pkg),
+        os.path.expanduser('~/.{}.ini'.format(pkg)),
+        '{}.ini'.format(pkg),
+    ]
+    config.read(conffiles)
+    return config[name]
+
+
+def bucket(date, source_lane, dest_lane, card_name, results):
+    this_week = int(datetime.datetime.today().strftime('%W'))
+    today = int(datetime.datetime.today().strftime('%w'))
+    year = int(date.strftime('%Y'))
+    week = int(date.strftime('%W'))
+    day = int(date.strftime('%w'))
+
+    if day > 4 or day < 1:
+        # 0 is Sunday, 6 is Saturday
+        # Our week goes Friday to Thursday
+        week += 1
+
+    if today > 4 or today < 1:
+        this_week += 1
+
+    if week != this_week:
+        return
+
+    if source_lane == call_scheduled[0]:
+        # Moved off the call scheduled lane, presumably
+        # because the call happened.
+        action_title = call_scheduled[1]
+        results[action_title].append(card_name)
+    elif dest_lane in lanes:
+        action_title = lanes[dest_lane]
+        results[action_title].append(card_name)
+
+
+def query(client):
+    '''Record the week-by-week movement of Trello cards.
+
+    Returns a dictionary of {action: [isv, …]}
+    '''
+
+    board = client.get_board('57dbf492c0aa81d3b27da61f') # Snap Upstream Blitz
+    cards = board.all_cards()
+    results = defaultdict(list)
+
+    for card in cards:
+        movements = card.list_movements()
+        for movement in movements:
+            dest_lane = movement['destination']['id']
+            source_lane = movement['source']['id']
+            date = movement['datetime']
+            if source_lane in red_lanes and card.idList == showed_interest:
+                # "showed interest", which we'll treat as contacted if
+                # the movement came from a red lane.
+                dest_lane = contacted
+            bucket(date, source_lane, dest_lane, card.name, results)
+        if not movements:
+            date = card.card_created_date
+            if card.idList == showed_interest:
+                # "showed interest", which we'll treat as contacted if and only
+                # if there's no other movement.
+                source_lane = contacted
+                dest_lane = contacted
+                bucket(date, source_lane, dest_lane, card.name, results)
+            if card.idList in lanes or card.idList == call_scheduled:
+                source_lane = card.idList
+                dest_lane = card.idList
+                bucket(date, source_lane, dest_lane, card.name, results)
+
+    return results
+
+def deduplicate(results):
+    actions = sorted(results, reverse=True)
+    other_actions = actions.copy()
+    for action in actions:
+        other_actions.pop(0)
+        for other_action in other_actions:
+            difference = set(results[other_action]) - set(results[action])
+            results[other_action] = difference
+
+def reduce_to_counts(results):
+    for key in results:
+        results[key] = len(results[key])
+
+def set_gauges(registry, data):
+    for key in data:
+        g = Gauge('snap_eco_trello_{}'.format(key), key, registry=registry)
+        g.set(data[key])
+
+
+def main():
+    pkg = 'snappy-kpi-scripts'
+    name = os.path.basename(sys.argv[0])
+    config = get_config(pkg, name)
+    try:
+        client = TrelloClient(api_key=config['snap-eco-week-by-week-trello-api-key'],
+                              api_secret=config['snap-eco-week-by-week-trello-api-secret'],
+                              token=config['snap-eco-week-by-week-trello-token'])
+    except KeyError:
+        print('Please set trello-api-key, trello-api-secret, and trello-token.')
+        sys.exit(1)
+
+    results = query(client)
+    deduplicate(results)
+    if '--debug' in sys.argv:
+        print(results)
+        print()
+    reduce_to_counts(results)
+    registry = CollectorRegistry()
+    try:
+        set_gauges(registry, results)
+        if '--debug' in sys.argv:
+            import pprint
+            pprint.pprint([(x.name, x.samples) for x in registry.collect()])
+    finally:
+        if not '--debug' in sys.argv:
+            # if set_gauges bombed out for any reason, just upload blank data.
+            push_to_gateway(config['push-gateway'],
+                            job='snap-eco-trello',
+                            registry=registry)
+    return 0
+
+
+if __name__ == '__main__':
+    sys.exit(main())
