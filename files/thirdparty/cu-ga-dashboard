@@ -168,7 +168,7 @@ def set_gauges(registry, responses):
             for metric in metricHeaders:
                 metric_name = metric['name'].replace('ga:', '')
                 gauge = Gauge(
-                    name='ga_dashboard_conjure_up_{}'.format(category),
+                    name='cu_dashboard_{}'.format(category),
                     documentation='GA metric for conjure-up {}'.format(
                         metric_name),
                     labelnames=[d.replace('ga:', '')
