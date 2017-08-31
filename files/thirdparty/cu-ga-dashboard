@@ -77,6 +77,7 @@ def get_report(analytics, view_id):
                         'dimensionFilterClauses': [{
                             "filters": [{
                                 'dimensionName': 'ga:eventAction',
+                                'operator': 'IN_LIST',
                                 "expressions": ["aws",
                                                 "azure",
                                                 "cloudsigma",
@@ -106,6 +107,7 @@ def get_report(analytics, view_id):
                     'dimensionFilterClauses': [{
                         "filters": [{
                             'dimensionName': 'ga:eventAction',
+                            'operator': 'IN_LIST',
                             'expressions': [
                                 "openstack-novalxd",
                                 "ghost",
@@ -208,7 +210,7 @@ def main():
             # if set_gauges bombed out for any reason, just upload blank data.
             push_to_gateway(
                 config['push-gateway'],
-                job='conjure_up_google_analytics',
+                job='conjure-up-google-analytics',
                 registry=registry)
         else:  # Debugging enabled.
             import pprint

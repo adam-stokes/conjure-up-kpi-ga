@@ -66,4 +66,4 @@ if __name__ == '__main__':
         # If the setting of gauges failed for any reason, 
         # just push empty data
         push_to_gateway(config['push-gateway'],
-                        job='github-repo-data', registry=registry)
+                        job='conjure-up-github-repo-data', registry=registry)

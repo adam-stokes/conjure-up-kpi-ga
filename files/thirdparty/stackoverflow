@@ -55,5 +55,5 @@ if __name__ == '__main__':
     finally:
         # if set_gauges bombed out for any reason, just upload blank data.
         push_to_gateway(config['push-gateway'],
-                        job='stackoverflow-questions-data',
+                        job='conjure-up-stackoverflow-questions-data',
                         registry=registry)
