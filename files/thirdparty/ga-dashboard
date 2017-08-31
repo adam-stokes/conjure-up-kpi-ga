@@ -78,7 +78,8 @@ def get_report(analytics, view_id):
                             "filters": [{
                                 'dimensionName': 'ga:eventCategory',
                                 "expressions": ["Spell\sChoice",
-                                                "Cloud\sSelection"]
+                                                "Cloud\sSelection",
+                                                "Addon\sSelected"]
                             }]
                         }],
                         'dimensions': [

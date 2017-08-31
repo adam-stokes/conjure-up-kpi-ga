@@ -28,13 +28,13 @@ def get_github_orgs(config):
 
 
 def set_gauges(registry, ubuntu):
-    forks_gauge = Gauge('github_repo_forks',
+    forks_gauge = Gauge('cu_github_repo_forks',
                         'forks_count', ['repo'], registry=registry)
-    network_gauge = Gauge('github_repo_network',
+    network_gauge = Gauge('cu_github_repo_network',
                           'network_count', ['repo'], registry=registry)
-    watchers_gauge = Gauge('github_repo_watchers',
+    watchers_gauge = Gauge('cu_github_repo_watchers',
                            'watchers_count', ['repo'], registry=registry)
-    pull_request_gauge = Gauge('github_repo_pull_requests',
+    pull_request_gauge = Gauge('cu_github_repo_pull_requests',
                                'number of pull requests per repo',
                                ['repo'], registry=registry)
 

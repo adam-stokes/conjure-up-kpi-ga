@@ -111,7 +111,7 @@ def write_ga_dashboard_credentials():
 
 
 @when_all(
-    'kpi.configured',
+    'cu-kpi.configured',
     'push_gateway.configured',
 )
 def write_config():
