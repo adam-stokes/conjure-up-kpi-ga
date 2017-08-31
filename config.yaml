@@ -12,16 +12,16 @@ options:
         default: ''
         description: Password for github API
         type: string
-    ga-dashboard-view-id:
+    cu-ga-dashboard-view-id:
         default: ''
         description: Google Analytics view ID for conjure-up
         type: string
-    ga-dashboard-credentials:
+    cu-ga-dashboard-credentials:
         default: ''
         description:
             Base64-encoded Google Analytics account credentials for conjure-up in JSON format
         type: string
-    ga-dashboard-credentials-file:
+    cu-ga-dashboard-credentials-file:
         default: '/home/ubuntu/.conjure-up-kpi/ga-dashboard.credentials'
         description:
             Where to place the Google Analytics credentials file for conjure-up

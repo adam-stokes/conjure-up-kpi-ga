@@ -77,7 +77,8 @@ def get_report(analytics, view_id):
                         'dimensionFilterClauses': [{
                             "filters": [{
                                 'dimensionName': 'ga:eventCategory',
-                                "expressions": ["Spell\sChoice"]
+                                "expressions": ["Spell\sChoice",
+                                                "Cloud\sSelection"]
                             }]
                         }],
                         'dimensions': [
@@ -104,7 +105,7 @@ def set_gauges(registry, response):
         for metric in metricHeaders:
             metric_name = metric['name'].replace('ga:', '')
             gauge = Gauge(
-                name='ga_dashboard_{}'.format(metric_name),
+                name='ga_dashboard_conjure_up_{}'.format(metric_name),
                 documentation='GA metric for conjure-up {}'.format(
                     metric_name),
                 labelnames=[d.replace('ga:', '') for d in dimensionHeaders],
@@ -126,14 +127,14 @@ def set_gauges(registry, response):
 
 
 def main():
-    pkg = 'kpi'
+    pkg = 'cu-kpi'
     name = os.path.basename(sys.argv[0])
     config = get_config(pkg, name)
 
     registry = CollectorRegistry()
     try:
-        view_id = config['ga-dashboard-view-id']
-        creds_path = config['ga-dashboard-credentials-file']
+        view_id = config['cu-ga-dashboard-view-id']
+        creds_path = config['cu-ga-dashboard-credentials-file']
         scopes = ['https://www.googleapis.com/auth/analytics.readonly']
 
         analytics = initialize_analyticsreporting(creds_path, scopes)

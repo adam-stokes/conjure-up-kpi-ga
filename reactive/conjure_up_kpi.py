@@ -53,13 +53,13 @@ def maint(msg):
 
 def write_config_file():
     """
-    Create /etc/kpi.ini.
+    Create /etc/cu-kpi.ini.
     """
-    cfg_file = 'kpi.ini'
+    cfg_file = 'cu-kpi.ini'
     kv = unitdata.kv()
     push_gateway = kv.get('push_gateway')
     maint('rendering config %s' % (cfg_file,))
-    script_dir = '/srv/kpi/parts'
+    script_dir = '/srv/cu-kpi/parts'
     scripts = [x for x in os.listdir(
         script_dir) if re.match(r'^[-_A-Za-z]+$', x)]
     render(
@@ -79,7 +79,7 @@ def write_cron_job():
     """
     Create cron job
     """
-    dst = '/etc/cron.d/kpi'
+    dst = '/etc/cron.d/cu-kpi'
     cron_job = 'cron-job'
     maint('installing %s to %s' % (cron_job, dst))
     kv = unitdata.kv()
@@ -88,8 +88,8 @@ def write_cron_job():
         target=dst,
         perms=0o755,
         context={
-            'script_dir': '/srv/kpi/parts',
-            'script_name': 'kpi',
+            'script_dir': '/srv/cu-kpi/parts',
+            'script_name': 'cu-kpi',
             'user': kv.get('run-as'),
         },
     )
@@ -100,12 +100,12 @@ def write_ga_dashboard_credentials():
     Save GA credentials in the configured file.
     """
     kv = unitdata.kv()
-    creds_file = kv.get('ga-dashboard-credentials-file')
+    creds_file = kv.get('cu-ga-dashboard-credentials-file')
     maint('saving GA credentials to %s' % (creds_file,))
     dst_dir = os.path.dirname(creds_file)
     user = kv.get('run-as')
     host.mkdir(dst_dir, owner=user, perms=0o700)
-    creds_blob = kv.get('ga-dashboard-credentials')
+    creds_blob = kv.get('cu-ga-dashboard-credentials')
     creds_data = base64.b64decode(creds_blob.encode())
     host.write_file(creds_file, creds_data, owner=user)
 
@@ -116,7 +116,6 @@ def write_ga_dashboard_credentials():
 )
 def write_config():
     blocked('Unable to configure charm - please see log')
-    write_launchpad_credentials()
     write_ga_dashboard_credentials()
     push_gateway = write_config_file()
     write_cron_job()
@@ -144,24 +143,24 @@ def not_configured():
 
 @hook('config-changed')
 def config_changed():
-    remove_state('kpi.configured')
+    remove_state('cu-kpi.configured')
     maint('checking configuration')
 
     kv = unitdata.kv()
     config_items = (
-        'ga-dashboard-credentials',
-        'ga-dashboard-credentials-file',
+        'cu-ga-dashboard-credentials',
+        'cu-ga-dashboard-credentials-file',
         'run-as',
     )
     for c in config_items:
         item = hookenv.config(c)
         if len(item) <= 0:
             blocked('%s must be set' % (c,))
-            remove_state('kpi.configured')
+            remove_state('cu-kpi.configured')
             return
         else:
             kv.set(c, item)
-    set_state('kpi.configured')
+    set_state('cu-kpi.configured')
 
 
 @hook(
@@ -171,7 +170,7 @@ def config_changed():
 def install_files():
     # this part lifted from haproxy charm hooks.py
     src = os.path.join(os.environ["CHARM_DIR"], "files/thirdparty/")
-    dst = '/srv/kpi/parts/'
+    dst = '/srv/cu-kpi/parts/'
     maint('Copying scripts from %s to %s' % (src, dst))
     host.mkdir(dst, perms=0o755)
     for fname in glob.glob(os.path.join(src, "*")):

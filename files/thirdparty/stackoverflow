@@ -41,7 +41,7 @@ if __name__ == '__main__':
     import os
     import sys
 
-    pkg = 'kpi'
+    pkg = 'cu-kpi'
     name = os.path.basename(sys.argv[0])
     config = get_config(pkg, name)
 
