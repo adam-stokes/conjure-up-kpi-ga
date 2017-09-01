@@ -85,14 +85,14 @@ def get_report(analytics, view_id):
                                                 "openstack",
                                                 "rackspace",
                                                 "oracle",
-                                                "vsphere"
+                                                "vmware",
                                                 "gce",
                                                 "localhost",
                                                 "maas"]
                             }],
                         }],
                         'dimensions': [{'name': 'ga:eventAction'},
-                                       {'name': 'ga:eventAction'}]
+                                       {'name': 'ga:eventCategory'}]
                     }]
             }).execute(),
         'spells': analytics.reports().batchGet(
